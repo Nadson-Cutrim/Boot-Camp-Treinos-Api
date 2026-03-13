@@ -4,7 +4,7 @@ services:
   container_name: bootcamp-treinos-api-postgres
   environment:
     POSTGRES_USER: postgres
-    POSTGRES_PASSWORD: password
+    POSTGRES_PASSWORD: password2
     POSTGRES_DB: bootcamp-treinos-api
   ports:
     - "5432:5432"
