@@ -30,7 +30,7 @@ await app.register(fastifySwagger, {
     servers: [
       {
         description: "Localhost",
-        url: "http://localhost:3000",
+        url: "http://localhost:8080",
       },
     ],
   },
@@ -38,7 +38,7 @@ await app.register(fastifySwagger, {
 });
 
 await app.register(fastifyCors, {
-  origin: ["http://localhost:3000", "http://localhost:8080"],
+  origin: ["http://localhost:3000"],
   credentials: true,
 });
 
@@ -127,7 +127,7 @@ app.route({
 });
 const start = async () => {
   try {
-    await app.listen({ port: Number(process.env.PORT) || 3000 });
+    await app.listen({ port: Number(process.env.PORT) || 8081 });
   } catch (err) {
     app.log.error(err);
     process.exit(1);
