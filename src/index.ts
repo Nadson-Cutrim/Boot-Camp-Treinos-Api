@@ -13,6 +13,7 @@ import {
 } from "fastify-type-provider-zod";
 import z from "zod";
 
+import { NotFoundError } from "./errors/index.js";
 import { WeekDay } from "./generated/prisma/enums.js";
 import { auth } from "./lib/auth.js";
 import { CreateWorkoutPlan } from "./usecases/CreateWorkoutPlan.js";
@@ -113,26 +114,49 @@ app.withTypeProvider<ZodTypeProvider>().route({
         error: z.string(),
         code: z.string(),
       }),
+      404: z.object({
+        error: z.string(),
+        code: z.string(),
+      }),
+
+      500: z.object({
+        error: z.string(),
+        code: z.string(),
+      }),
     },
   },
   handler: async (req, rep) => {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
-    if (!session) {
-      return rep.status(401).send({
-        error: "Unauthorized",
-        code: "UNAUTHORIZED",
+    try {
+      const session = await auth.api.getSession({
+        headers: fromNodeHeaders(req.headers),
+      });
+      if (!session) {
+        return rep.status(401).send({
+          error: "Unauthorized",
+          code: "UNAUTHORIZED",
+        });
+      }
+      const createWorkoutPlan = new CreateWorkoutPlan();
+      const result = await createWorkoutPlan.execute({
+        userId: session.user.id,
+        name: req.body.name,
+        workoutDays: req.body.workoutDays,
+      });
+      return rep.status(201).send(result);
+    } catch (error) {
+      app.log.error(error);
+      if (error instanceof NotFoundError) {
+        return rep.status(404).send({
+          error: error.message,
+          code: "NOT_FOUND",
+        });
+      }
+      return rep.status(500).send({
+        error: "Internal server error",
+        code: "INTERNAL_SERVER_ERROR",
       });
     }
-    const createWorkoutPlan = new CreateWorkoutPlan();
-    const result = await createWorkoutPlan.execute({
-      userId: session.user.id,
-      name: req.body.name,
-      workoutDays: req.body.workoutDays,
-    });
-    return rep.status(201).send(result);
-  }, 
+  },
 });
 
 app.withTypeProvider<ZodTypeProvider>().route({
