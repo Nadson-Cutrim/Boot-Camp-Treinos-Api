@@ -3,7 +3,6 @@ import "dotenv/config";
 import fastifyCors from "@fastify/cors";
 import fastifySwagger from "@fastify/swagger";
 import fastifyApiReference from "@scalar/fastify-api-reference";
-import { fromNodeHeaders } from "better-auth/node";
 import Fastify from "fastify";
 import {
   jsonSchemaTransform,
@@ -13,10 +12,8 @@ import {
 } from "fastify-type-provider-zod";
 import z from "zod";
 
-import { NotFoundError } from "./errors/index.js";
-import { WeekDay } from "./generated/prisma/enums.js";
 import { auth } from "./lib/auth.js";
-import { CreateWorkoutPlan } from "./usecases/CreateWorkoutPlan.js";
+import { workoutPlanRouts } from "./routes/workout-plan.js";
 
 const app = Fastify({
   logger: true,
@@ -63,101 +60,8 @@ await app.register(fastifyApiReference, {
     ],
   },
 });
-
-app.withTypeProvider<ZodTypeProvider>().route({
-  method: "POST",
-  url: "/workout-plans",
-  schema: {
-    body: z.object({
-      name: z.string().trim().min(1),
-      workoutDays: z.array(
-        z.object({
-          name: z.string().trim().min(1),
-          weekDay: z.enum(WeekDay),
-          isRest: z.boolean().default(false),
-          estimatedDurationInSeconds: z.number().min(1),
-          exercises: z.array(
-            z.object({
-              order: z.number().min(0),
-              name: z.string().trim().min(1),
-              sets: z.number().min(1),
-              reps: z.number().min(1),
-              restTimeInSeconds: z.number().min(1),
-            }),
-          ),
-        }),
-      ),
-    }),
-    response: {
-      201: z.object({
-        id: z.uuid(),
-        name: z.string().trim().min(1),
-        workoutDays: z.array(
-          z.object({
-            name: z.string().trim().min(1),
-            weekDay: z.enum(WeekDay),
-            isRest: z.boolean(),
-            estimatedDurationInSeconds: z.number().min(1),
-            exercises: z.array(
-              z.object({
-                order: z.number().min(0),
-                name: z.string().trim().min(1),
-                sets: z.number().min(1),
-                reps: z.number().min(1),
-                restTimeInSeconds: z.number().min(1),
-              }),
-            ),
-          }),
-        ),
-      }),
-      401: z.object({
-        error: z.string(),
-        code: z.string(),
-      }),
-      404: z.object({
-        error: z.string(),
-        code: z.string(),
-      }),
-
-      500: z.object({
-        error: z.string(),
-        code: z.string(),
-      }),
-    },
-  },
-  handler: async (req, rep) => {
-    try {
-      const session = await auth.api.getSession({
-        headers: fromNodeHeaders(req.headers),
-      });
-      if (!session) {
-        return rep.status(401).send({
-          error: "Unauthorized",
-          code: "UNAUTHORIZED",
-        });
-      }
-      const createWorkoutPlan = new CreateWorkoutPlan();
-      const result = await createWorkoutPlan.execute({
-        userId: session.user.id,
-        name: req.body.name,
-        workoutDays: req.body.workoutDays,
-      });
-      return rep.status(201).send(result);
-    } catch (error) {
-      app.log.error(error);
-      if (error instanceof NotFoundError) {
-        return rep.status(404).send({
-          error: error.message,
-          code: "NOT_FOUND",
-        });
-      }
-      return rep.status(500).send({
-        error: "Internal server error",
-        code: "INTERNAL_SERVER_ERROR",
-      });
-    }
-  },
-});
+//Routes
+await app.register(workoutPlanRouts, { prefix: "/workout-plans" });
 
 app.withTypeProvider<ZodTypeProvider>().route({
   method: "GET",
