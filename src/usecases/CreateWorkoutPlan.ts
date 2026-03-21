@@ -2,26 +2,64 @@ import { NotFoundError } from "../errors/index.js";
 import { WeekDay } from "../generated/prisma/enums.js";
 import { prisma } from "../lib/db.js";
 
+interface ExerciseInputDto {
+  order: number;
+  name: string;
+  sets: number;
+  reps: number;
+  restTimeInSeconds: number;
+}
+
+interface WorkoutDayInputDto {
+  name: string;
+  weekDay: WeekDay;
+  isRest: boolean;
+  coverImageUrl?: string;
+  estimatedDurationInSeconds: number;
+  exercises: Array<ExerciseInputDto>;
+}
+
 interface InputDto {
   userId: string;
   name: string;
-  workoutDays: Array<{
-    name: string;
-    weekDay: WeekDay;
-    isRest: boolean;
-    estimatedDurationInSeconds: number;
-    exercises: Array<{
-      order: number;
-      name: string;
-      sets: number;
-      reps: number;
-      restTimeInSeconds: number;
-    }>;
-  }>;
+  workoutDays: Array<WorkoutDayInputDto>;
+}
+
+interface ExerciseOutputDto {
+  id: string;
+  order: number;
+  name: string;
+  sets: number;
+  reps: number;
+  restTimeInSeconds: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface WorkoutDayOutputDto {
+  id: string;
+  name: string;
+  weekDay: WeekDay;
+  isRest: boolean;
+  coverImageUrl: string | null;
+  estimatedDurationInSeconds: number;
+  exercises: Array<ExerciseOutputDto>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface OutputDto {
+  id: string;
+  name: string;
+  userId: string;
+  isActive: boolean;
+  workoutDays: Array<WorkoutDayOutputDto>;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export class CreateWorkoutPlan {
-  async execute(dto: InputDto) {
+  async execute(dto: InputDto): Promise<OutputDto> {
     const existingWorkoutPlan = await prisma.workoutPlan.findFirst({
       where: {
         isActive: true,
@@ -51,6 +89,7 @@ export class CreateWorkoutPlan {
               name: workoutDay.name,
               weekDay: workoutDay.weekDay,
               isRest: workoutDay.isRest,
+              coverImageUrl: workoutDay.coverImageUrl,
               estimatedDurationInSeconds: workoutDay.estimatedDurationInSeconds,
               exercises: {
                 create: workoutDay.exercises.map((exercise) => ({
