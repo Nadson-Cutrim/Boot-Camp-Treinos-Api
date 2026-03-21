@@ -3,9 +3,18 @@ import { FastifyInstance } from "fastify";
 import { ZodTypeProvider } from "fastify-type-provider-zod";
 import z from "zod";
 
-import { ConflictError, ForbiddenError, NotFoundError, WorkoutPlanNotActiveError } from "../errors/index.js";
+import {
+  ConflictError,
+  ForbiddenError,
+  NotFoundError,
+  WorkoutPlanNotActiveError,
+} from "../errors/index.js";
 import { auth } from "../lib/auth.js";
-import { ErrorSchema, StartWorkoutSessionSchema, UpdateWorkoutSessionSchema } from "../schemas/index.js";
+import {
+  ErrorSchema,
+  StartWorkoutSessionSchema,
+  UpdateWorkoutSessionSchema,
+} from "../schemas/index.js";
 import { StartWorkoutSession } from "../usecases/StartWorkoutSession.js";
 import { UpdateWorkoutSession } from "../usecases/UpdateWorkoutSession.js";
 
