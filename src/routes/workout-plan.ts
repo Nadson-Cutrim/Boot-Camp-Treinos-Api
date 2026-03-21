@@ -7,11 +7,13 @@ import { auth } from "../lib/auth.js";
 import { ErrorSchema, WorkoutPlanSchema } from "../schemas/index.js";
 import { CreateWorkoutPlan } from "../usecases/CreateWorkoutPlan.js";
 
-export const workoutPlanRouts = async (app: FastifyInstance) => {
+export const workoutPlanRoutes = async (app: FastifyInstance) => {
   app.withTypeProvider<ZodTypeProvider>().route({
     method: "POST",
     url: "/",
     schema: {
+      tags: ["Workout Plan"],
+      summary: "Create a workout plan",
       body: WorkoutPlanSchema.omit({ id: true }).partial(),
       response: {
         201: WorkoutPlanSchema,

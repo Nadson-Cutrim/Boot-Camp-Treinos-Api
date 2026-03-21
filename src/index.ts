@@ -13,7 +13,8 @@ import {
 import z from "zod";
 
 import { auth } from "./lib/auth.js";
-import { workoutPlanRouts } from "./routes/workout-plan.js";
+import { workoutPlanRoutes } from "./routes/workout-plan.js";
+import { workoutSessionRoutes } from "./routes/workout-session.js";
 
 const app = Fastify({
   logger: true,
@@ -61,7 +62,8 @@ await app.register(fastifyApiReference, {
   },
 });
 //Routes
-await app.register(workoutPlanRouts, { prefix: "/workout-plans" });
+await app.register(workoutPlanRoutes, { prefix: "/workout-plans" });
+await app.register(workoutSessionRoutes, { prefix: "/workout-plans" });
 
 app.withTypeProvider<ZodTypeProvider>().route({
   method: "GET",
