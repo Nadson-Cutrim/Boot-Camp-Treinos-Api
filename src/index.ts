@@ -1,144 +1,189 @@
-import "dotenv/config";
-
-import fastifyCors from "@fastify/cors";
-import fastifySwagger from "@fastify/swagger";
-import fastifyApiReference from "@scalar/fastify-api-reference";
-import Fastify from "fastify";
-import {
-  jsonSchemaTransform,
-  serializerCompiler,
-  validatorCompiler,
-  ZodTypeProvider,
-} from "fastify-type-provider-zod";
 import z from "zod";
 
-import { auth } from "./lib/auth.js";
-import { homeRoutes } from "./routes/home.js";
-import { statsRoutes } from "./routes/stats.js";
-import { workoutPlanRoutes } from "./routes/workout-plan.js";
-import { workoutSessionRoutes } from "./routes/workout-session.js";
+import { WeekDay } from "./generated/prisma/enums.js";
 
-const app = Fastify({
-  logger: true,
-});
-app.setValidatorCompiler(validatorCompiler);
-app.setSerializerCompiler(serializerCompiler);
-
-await app.register(fastifySwagger, {
-  openapi: {
-    info: {
-      title: "Boot Camp Treinos API",
-      description: "API para gerenciamento de treinos e exercícios",
-      version: "1.0.0",
-    },
-    servers: [
-      {
-        description: "Localhost",
-        url: "http://localhost:8080",
-      },
-    ],
-  },
-  transform: jsonSchemaTransform,
+export const ErrorSchema = z.object({
+  error: z.string(),
+  code: z.string(),
 });
 
-await app.register(fastifyCors, {
-  origin: ["http://localhost:3000"],
-  credentials: true,
+export const StartWorkoutSessionSchema = z.object({
+  userWorkoutSessionId: z.uuid(),
 });
 
-await app.register(fastifyApiReference, {
-  routePrefix: "/docs",
-  configuration: {
-    sources: [
-      {
-        title: "Bootcamp Treinos API",
-        slug: "bootcamp-treinos-api",
-        url: "/swagger.json",
-      },
-      {
-        title: "Auth API",
-        slug: "auth-api",
-        url: "/api/auth/open-api/generate-schema",
-      },
-    ],
-  },
-});
-//Routes
-await app.register(homeRoutes, { prefix: "/home" });
-await app.register(statsRoutes, { prefix: "/stats" });
-await app.register(workoutPlanRoutes, { prefix: "/workout-plans" });
-await app.register(workoutSessionRoutes, { prefix: "/workout-plans" });
-
-app.withTypeProvider<ZodTypeProvider>().route({
-  method: "GET",
-  url: "/swagger.json",
-  schema: {
-    hide: true,
-  },
-  handler: async () => {
-    return app.swagger();
-  },
+export const UpdateWorkoutSessionBodySchema = z.object({
+  completedAt: z.iso.datetime(),
 });
 
-app.withTypeProvider<ZodTypeProvider>().route({
-  method: "GET",
-  url: "/",
-  schema: {
-    description: "Hello world",
-    tags: ["Hello World"],
-    response: {
-      200: z.object({
-        message: z.string(),
+export const UpdateWorkoutSessionSchema = z.object({
+  id: z.uuid(),
+  startedAt: z.iso.datetime(),
+  completedAt: z.iso.datetime(),
+});
+
+export const StatsQuerySchema = z.object({
+  from: z.iso.date(),
+  to: z.iso.date(),
+});
+
+export const StatsSchema = z.object({
+  workoutStreak: z.number(),
+  consistencyByDay: z.record(
+    z.iso.date(),
+    z.object({
+      workoutDayCompleted: z.boolean(),
+      workoutDayStarted: z.boolean(),
+    }),
+  ),
+  completedWorkoutsCount: z.number(),
+  conclusionRate: z.number(),
+  totalTimeInSeconds: z.number(),
+});
+
+export const HomeDataSchema = z.object({
+  activeWorkoutPlanId: z.uuid(),
+  todayWorkoutDay: z.object({
+    workoutPlanId: z.uuid(),
+    id: z.uuid(),
+    name: z.string(),
+    isRest: z.boolean(),
+    weekDay: z.enum(WeekDay),
+    estimatedDurationInSeconds: z.number(),
+    coverImageUrl: z.url().optional(),
+    exercisesCount: z.number(),
+  }),
+  workoutStreak: z.number(),
+  consistencyByDay: z.record(
+    z.iso.date(),
+    z.object({
+      workoutDayCompleted: z.boolean(),
+      workoutDayStarted: z.boolean(),
+    }),
+  ),
+});
+
+export const GetWorkoutDaySchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  isRest: z.boolean(),
+  coverImageUrl: z.url().optional(),
+  estimatedDurationInSeconds: z.number(),
+  weekDay: z.enum(WeekDay),
+  exercises: z.array(
+    z.object({
+      id: z.uuid(),
+      name: z.string(),
+      order: z.number(),
+      workoutDayId: z.uuid(),
+      sets: z.number(),
+      reps: z.number(),
+      restTimeInSeconds: z.number(),
+    }),
+  ),
+  sessions: z.array(
+    z.object({
+      id: z.uuid(),
+      workoutDayId: z.uuid(),
+      startedAt: z.iso.date().optional(),
+      completedAt: z.iso.date().optional(),
+    }),
+  ),
+});
+
+export const GetWorkoutPlanSchema = z.object({
+  id: z.uuid(),
+  name: z.string(),
+  workoutDays: z.array(
+    z.object({
+      id: z.uuid(),
+      weekDay: z.enum(WeekDay),
+      name: z.string(),
+      isRest: z.boolean(),
+      coverImageUrl: z.url().optional(),
+      estimatedDurationInSeconds: z.number(),
+      exercisesCount: z.number(),
+    }),
+  ),
+});
+
+export const ListWorkoutPlansQuerySchema = z.object({
+  active: z
+    .enum(["true", "false"])
+    .transform((v) => v === "true")
+    .optional(),
+});
+
+export const ListWorkoutPlansSchema = z.array(
+  z.object({
+    id: z.uuid(),
+    name: z.string(),
+    isActive: z.boolean(),
+    workoutDays: z.array(
+      z.object({
+        id: z.uuid(),
+        name: z.string(),
+        weekDay: z.enum(WeekDay),
+        isRest: z.boolean(),
+        estimatedDurationInSeconds: z.number(),
+        coverImageUrl: z.url().optional(),
+        exercises: z.array(
+          z.object({
+            id: z.uuid(),
+            order: z.number(),
+            name: z.string(),
+            sets: z.number(),
+            reps: z.number(),
+            restTimeInSeconds: z.number(),
+          }),
+        ),
       }),
-    },
-  },
-  handler: () => {
-    return {
-      message: "Hello World",
-    };
-  },
+    ),
+  }),
+);
+
+export const UpsertUserTrainDataBodySchema = z.object({
+  weightInGrams: z.number().min(0),
+  heightInCentimeters: z.number().min(0),
+  age: z.number().min(0),
+  bodyFatPercentage: z.number().min(0).max(100),
 });
 
-app.route({
-  method: ["GET", "POST"],
-  url: "/api/auth/*",
-  async handler(request, reply) {
-    try {
-      // Construct request URL
-      const url = new URL(request.url, `http://${request.headers.host}`);
-
-      // Convert Fastify headers to standard Headers object
-      const headers = new Headers();
-      Object.entries(request.headers).forEach(([key, value]) => {
-        if (value) headers.append(key, value.toString());
-      });
-      // Create Fetch API-compatible request
-      const req = new Request(url.toString(), {
-        method: request.method,
-        headers,
-        ...(request.body ? { body: JSON.stringify(request.body) } : {}),
-      });
-      // Process authentication request
-      const response = await auth.handler(req);
-      // Forward response to client
-      reply.status(response.status);
-      response.headers.forEach((value, key) => reply.header(key, value));
-      reply.send(response.body ? await response.text() : null);
-    } catch (error) {
-      app.log.error(error);
-      reply.status(500).send({
-        error: "Internal authentication error",
-        code: "AUTH_FAILURE",
-      });
-    }
-  },
+export const UserTrainDataSchema = z.object({
+  userId: z.string(),
+  userName: z.string(),
+  weightInGrams: z.number(),
+  heightInCentimeters: z.number(),
+  age: z.number(),
+  bodyFatPercentage: z.number().min(0).max(100),
 });
-const start = async () => {
-  try {
-    await app.listen({ port: Number(process.env.PORT) || 8081 });
-  } catch (err) {
-    app.log.error(err);
-    process.exit(1);
-  }
-};
-start();
+
+export const UpsertUserTrainDataSchema = z.object({
+  userId: z.string(),
+  weightInGrams: z.number(),
+  heightInCentimeters: z.number(),
+  age: z.number(),
+  bodyFatPercentage: z.number(),
+});
+
+export const WorkoutPlanSchema = z.object({
+  id: z.uuid(),
+  name: z.string().trim().min(1),
+  workoutDays: z.array(
+    z.object({
+      name: z.string().trim().min(1),
+      weekDay: z.enum(WeekDay),
+      isRest: z.boolean().default(false),
+      estimatedDurationInSeconds: z.number().min(1),
+      coverImageUrl: z.url().optional(),
+      exercises: z.array(
+        z.object({
+          order: z.number().min(0),
+          name: z.string().trim().min(1),
+          sets: z.number().min(1),
+          reps: z.number().min(1),
+          restTimeInSeconds: z.number().min(1),
+        }),
+      ),
+    }),
+  ),
+});

@@ -6,7 +6,7 @@ import z from "zod";
 import { NotFoundError } from "../errors/index.js";
 import { auth } from "../lib/auth.js";
 import { ErrorSchema, HomeDataSchema } from "../schemas/index.js";
-import { GetHome } from "../usecases/GetHome.js";
+import { GetHomeData } from "../usecases/GetHomeData.js";
 
 export const homeRoutes = async (app: FastifyInstance) => {
   app.withTypeProvider<ZodTypeProvider>().route({
@@ -16,7 +16,7 @@ export const homeRoutes = async (app: FastifyInstance) => {
       tags: ["Home"],
       summary: "Get home page data",
       params: z.object({
-        date: z.string().date(),
+        date: z.iso.date(),
       }),
       response: {
         200: HomeDataSchema,
@@ -25,32 +25,36 @@ export const homeRoutes = async (app: FastifyInstance) => {
         500: ErrorSchema,
       },
     },
-    handler: async (req, rep) => {
+    handler: async (request, reply) => {
       try {
         const session = await auth.api.getSession({
-          headers: fromNodeHeaders(req.headers),
+          headers: fromNodeHeaders(request.headers),
         });
         if (!session) {
-          return rep.status(401).send({
+          return reply.status(401).send({
             error: "Unauthorized",
             code: "UNAUTHORIZED",
           });
         }
-        const getHome = new GetHome();
-        const result = await getHome.execute({
+
+        const getHomeData = new GetHomeData();
+        const result = await getHomeData.execute({
           userId: session.user.id,
-          date: req.params.date,
+          date: request.params.date,
         });
-        return rep.status(200).send(result);
+
+        return reply.status(200).send(result);
       } catch (error) {
         app.log.error(error);
+
         if (error instanceof NotFoundError) {
-          return rep.status(404).send({
+          return reply.status(404).send({
             error: error.message,
-            code: "NOT_FOUND",
+            code: "NOT_FOUND_ERROR",
           });
         }
-        return rep.status(500).send({
+
+        return reply.status(500).send({
           error: "Internal server error",
           code: "INTERNAL_SERVER_ERROR",
         });

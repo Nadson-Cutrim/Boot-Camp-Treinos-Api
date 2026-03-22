@@ -1,4 +1,4 @@
-import { ForbiddenError, NotFoundError } from "../errors/index.js";
+import { NotFoundError } from "../errors/index.js";
 import { WeekDay } from "../generated/prisma/enums.js";
 import { prisma } from "../lib/db.js";
 
@@ -7,20 +7,18 @@ interface InputDto {
   workoutPlanId: string;
 }
 
-interface WorkoutDayDetail {
-  id: string;
-  weekDay: WeekDay;
-  name: string;
-  isRest: boolean;
-  coverImageUrl?: string;
-  estimatedDurationInSeconds: number;
-  exercisesCount: number;
-}
-
 interface OutputDto {
   id: string;
   name: string;
-  workoutDays: WorkoutDayDetail[];
+  workoutDays: Array<{
+    id: string;
+    weekDay: WeekDay;
+    name: string;
+    isRest: boolean;
+    coverImageUrl?: string;
+    estimatedDurationInSeconds: number;
+    exercisesCount: number;
+  }>;
 }
 
 export class GetWorkoutPlan {
@@ -30,18 +28,16 @@ export class GetWorkoutPlan {
       include: {
         workoutDays: {
           include: {
-            exercises: true,
+            _count: {
+              select: { exercises: true },
+            },
           },
         },
       },
     });
 
-    if (!workoutPlan) {
+    if (!workoutPlan || workoutPlan.userId !== dto.userId) {
       throw new NotFoundError("Workout plan not found");
-    }
-
-    if (workoutPlan.userId !== dto.userId) {
-      throw new ForbiddenError("You are not the owner of this workout plan");
     }
 
     return {
@@ -54,7 +50,7 @@ export class GetWorkoutPlan {
         isRest: day.isRest,
         coverImageUrl: day.coverImageUrl ?? undefined,
         estimatedDurationInSeconds: day.estimatedDurationInSeconds,
-        exercisesCount: day.exercises.length,
+        exercisesCount: day._count.exercises,
       })),
     };
   }

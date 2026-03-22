@@ -2,60 +2,43 @@ import { NotFoundError } from "../errors/index.js";
 import { WeekDay } from "../generated/prisma/enums.js";
 import { prisma } from "../lib/db.js";
 
-interface ExerciseInputDto {
-  order: number;
-  name: string;
-  sets: number;
-  reps: number;
-  restTimeInSeconds: number;
-}
-
-interface WorkoutDayInputDto {
-  name: string;
-  weekDay: WeekDay;
-  isRest: boolean;
-  coverImageUrl?: string;
-  estimatedDurationInSeconds: number;
-  exercises: Array<ExerciseInputDto>;
-}
-
+// Data Transfer Object
 interface InputDto {
   userId: string;
   name: string;
-  workoutDays: Array<WorkoutDayInputDto>;
+  workoutDays: Array<{
+    name: string;
+    weekDay: WeekDay;
+    isRest: boolean;
+    estimatedDurationInSeconds: number;
+    coverImageUrl?: string;
+    exercises: Array<{
+      order: number;
+      name: string;
+      sets: number;
+      reps: number;
+      restTimeInSeconds: number;
+    }>;
+  }>;
 }
 
-interface ExerciseOutputDto {
-  id: string;
-  order: number;
-  name: string;
-  sets: number;
-  reps: number;
-  restTimeInSeconds: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-interface WorkoutDayOutputDto {
+interface OutputDto {
   id: string;
   name: string;
-  weekDay: WeekDay;
-  isRest: boolean;
-  coverImageUrl: string | null;
-  estimatedDurationInSeconds: number;
-  exercises: Array<ExerciseOutputDto>;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface OutputDto {
-  id: string;
-  name: string;
-  userId: string;
-  isActive: boolean;
-  workoutDays: Array<WorkoutDayOutputDto>;
-  createdAt: Date;
-  updatedAt: Date;
+  workoutDays: Array<{
+    name: string;
+    weekDay: WeekDay;
+    isRest: boolean;
+    estimatedDurationInSeconds: number;
+    coverImageUrl?: string;
+    exercises: Array<{
+      order: number;
+      name: string;
+      sets: number;
+      reps: number;
+      restTimeInSeconds: number;
+    }>;
+  }>;
 }
 
 export class CreateWorkoutPlan {
@@ -65,36 +48,31 @@ export class CreateWorkoutPlan {
         isActive: true,
       },
     });
-    //Transaction - Atomicidade - Garantir que o plano de treino seja criado e o plano de treino antigo seja desativado em uma única operação atômica
+    // Transaction - Atomicidade
     return prisma.$transaction(async (tx) => {
       if (existingWorkoutPlan) {
         await tx.workoutPlan.update({
-          where: {
-            id: existingWorkoutPlan.id,
-          },
-          data: {
-            isActive: false,
-          },
+          where: { id: existingWorkoutPlan.id },
+          data: { isActive: false },
         });
       }
-
       const workoutPlan = await tx.workoutPlan.create({
         data: {
           id: crypto.randomUUID(),
-          userId: dto.userId,
           name: dto.name,
+          userId: dto.userId,
           isActive: true,
           workoutDays: {
             create: dto.workoutDays.map((workoutDay) => ({
               name: workoutDay.name,
               weekDay: workoutDay.weekDay,
               isRest: workoutDay.isRest,
-              coverImageUrl: workoutDay.coverImageUrl,
               estimatedDurationInSeconds: workoutDay.estimatedDurationInSeconds,
+              coverImageUrl: workoutDay.coverImageUrl,
               exercises: {
                 create: workoutDay.exercises.map((exercise) => ({
-                  order: exercise.order,
                   name: exercise.name,
+                  order: exercise.order,
                   sets: exercise.sets,
                   reps: exercise.reps,
                   restTimeInSeconds: exercise.restTimeInSeconds,
@@ -117,7 +95,24 @@ export class CreateWorkoutPlan {
       if (!result) {
         throw new NotFoundError("Workout plan not found");
       }
-      return result;
+      return {
+        id: result.id,
+        name: result.name,
+        workoutDays: result.workoutDays.map((day) => ({
+          name: day.name,
+          weekDay: day.weekDay,
+          isRest: day.isRest,
+          estimatedDurationInSeconds: day.estimatedDurationInSeconds,
+          coverImageUrl: day.coverImageUrl ?? undefined,
+          exercises: day.exercises.map((exercise) => ({
+            order: exercise.order,
+            name: exercise.name,
+            sets: exercise.sets,
+            reps: exercise.reps,
+            restTimeInSeconds: exercise.restTimeInSeconds,
+          })),
+        })),
+      };
     });
-  } 
+  }
 }

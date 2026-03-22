@@ -1,4 +1,8 @@
-import { ConflictError, ForbiddenError, NotFoundError, WorkoutPlanNotActiveError } from "../errors/index.js";
+import {
+  NotFoundError,
+  SessionAlreadyStartedError,
+  WorkoutPlanNotActiveError,
+} from "../errors/index.js";
 import { prisma } from "../lib/db.js";
 
 interface InputDto {
@@ -8,7 +12,7 @@ interface InputDto {
 }
 
 interface OutputDto {
-  workoutSessionId: string;
+  userWorkoutSessionId: string;
 }
 
 export class StartWorkoutSession {
@@ -22,46 +26,40 @@ export class StartWorkoutSession {
     }
 
     if (workoutPlan.userId !== dto.userId) {
-      throw new ForbiddenError("You are not the owner of this workout plan");
+      throw new NotFoundError("Workout plan not found");
     }
 
     if (!workoutPlan.isActive) {
-      throw new WorkoutPlanNotActiveError();
+      throw new WorkoutPlanNotActiveError("Workout plan is not active");
     }
 
     const workoutDay = await prisma.workoutDay.findUnique({
-      where: { id: dto.workoutDayId },
+      where: { id: dto.workoutDayId, workoutPlanId: dto.workoutPlanId },
     });
 
     if (!workoutDay) {
       throw new NotFoundError("Workout day not found");
     }
 
-    if (workoutDay.workoutPlanId !== dto.workoutPlanId) {
-      throw new NotFoundError("Workout day does not belong to this workout plan");
-    }
-
     const existingSession = await prisma.workoutSession.findFirst({
-      where: {
-        workoutDayId: dto.workoutDayId,
-        completedAt: null,
-      },
+      where: { workoutDayId: dto.workoutDayId },
     });
 
     if (existingSession) {
-      throw new ConflictError("A session for this workout day is already in progress");
+      throw new SessionAlreadyStartedError(
+        "A session has already been started for this day",
+      );
     }
 
-    const workoutSession = await prisma.workoutSession.create({
+    const session = await prisma.workoutSession.create({
       data: {
-        id: crypto.randomUUID(),
         workoutDayId: dto.workoutDayId,
         startedAt: new Date(),
       },
     });
 
     return {
-      workoutSessionId: workoutSession.id,
+      userWorkoutSessionId: session.id,
     };
   }
 }

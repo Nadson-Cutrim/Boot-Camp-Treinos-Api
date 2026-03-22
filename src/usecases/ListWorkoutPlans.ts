@@ -6,56 +6,43 @@ interface InputDto {
   active?: boolean;
 }
 
-interface ExerciseDetail {
-  id: string;
-  name: string;
-  order: number;
-  sets: number;
-  reps: number;
-  restTimeInSeconds: number;
-}
-
-interface WorkoutDayDetail {
-  id: string;
-  name: string;
-  weekDay: WeekDay;
-  isRest: boolean;
-  coverImageUrl?: string;
-  estimatedDurationInSeconds: number;
-  exercises: ExerciseDetail[];
-}
-
-interface WorkoutPlanDetail {
+interface OutputDto {
   id: string;
   name: string;
   isActive: boolean;
-  workoutDays: WorkoutDayDetail[];
+  workoutDays: Array<{
+    id: string;
+    name: string;
+    weekDay: WeekDay;
+    isRest: boolean;
+    estimatedDurationInSeconds: number;
+    coverImageUrl?: string;
+    exercises: Array<{
+      id: string;
+      order: number;
+      name: string;
+      sets: number;
+      reps: number;
+      restTimeInSeconds: number;
+    }>;
+  }>;
 }
 
-export class GetWorkoutPlans {
-  async execute(dto: InputDto): Promise<WorkoutPlanDetail[]> {
+export class ListWorkoutPlans {
+  async execute(dto: InputDto): Promise<OutputDto[]> {
     const workoutPlans = await prisma.workoutPlan.findMany({
       where: {
         userId: dto.userId,
-        ...(dto.active !== undefined && { isActive: dto.active }),
+        ...(dto.active !== undefined ? { isActive: dto.active } : {}),
       },
       include: {
         workoutDays: {
           include: {
-            exercises: {
-              orderBy: {
-                order: "asc",
-              },
-            },
-          },
-          orderBy: {
-            weekDay: "asc",
+            exercises: { orderBy: { order: "asc" } },
           },
         },
       },
-      orderBy: {
-        createdAt: "desc",
-      },
+      orderBy: { createdAt: "desc" },
     });
 
     return workoutPlans.map((plan) => ({
@@ -67,12 +54,12 @@ export class GetWorkoutPlans {
         name: day.name,
         weekDay: day.weekDay,
         isRest: day.isRest,
-        coverImageUrl: day.coverImageUrl ?? undefined,
         estimatedDurationInSeconds: day.estimatedDurationInSeconds,
+        coverImageUrl: day.coverImageUrl ?? undefined,
         exercises: day.exercises.map((exercise) => ({
           id: exercise.id,
-          name: exercise.name,
           order: exercise.order,
+          name: exercise.name,
           sets: exercise.sets,
           reps: exercise.reps,
           restTimeInSeconds: exercise.restTimeInSeconds,

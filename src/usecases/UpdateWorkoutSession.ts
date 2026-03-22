@@ -1,11 +1,11 @@
-import { ForbiddenError, NotFoundError } from "../errors/index.js";
+import { NotFoundError } from "../errors/index.js";
 import { prisma } from "../lib/db.js";
 
 interface InputDto {
   userId: string;
   workoutPlanId: string;
   workoutDayId: string;
-  workoutSessionId: string;
+  sessionId: string;
   completedAt: string;
 }
 
@@ -21,49 +21,35 @@ export class UpdateWorkoutSession {
       where: { id: dto.workoutPlanId },
     });
 
-    if (!workoutPlan) {
+    if (!workoutPlan || workoutPlan.userId !== dto.userId) {
       throw new NotFoundError("Workout plan not found");
     }
 
-    if (workoutPlan.userId !== dto.userId) {
-      throw new ForbiddenError("You are not the owner of this workout plan");
-    }
-
     const workoutDay = await prisma.workoutDay.findUnique({
-      where: { id: dto.workoutDayId },
+      where: { id: dto.workoutDayId, workoutPlanId: dto.workoutPlanId },
     });
 
     if (!workoutDay) {
       throw new NotFoundError("Workout day not found");
     }
 
-    if (workoutDay.workoutPlanId !== dto.workoutPlanId) {
-      throw new NotFoundError("Workout day does not belong to this workout plan");
-    }
-
-    const workoutSession = await prisma.workoutSession.findUnique({
-      where: { id: dto.workoutSessionId },
+    const session = await prisma.workoutSession.findUnique({
+      where: { id: dto.sessionId, workoutDayId: dto.workoutDayId },
     });
 
-    if (!workoutSession) {
+    if (!session) {
       throw new NotFoundError("Workout session not found");
     }
 
-    if (workoutSession.workoutDayId !== dto.workoutDayId) {
-      throw new NotFoundError("Workout session does not belong to this workout day");
-    }
-
     const updatedSession = await prisma.workoutSession.update({
-      where: { id: dto.workoutSessionId },
-      data: {
-        completedAt: new Date(dto.completedAt),
-      },
+      where: { id: dto.sessionId },
+      data: { completedAt: new Date(dto.completedAt) },
     });
 
     return {
       id: updatedSession.id,
       startedAt: updatedSession.startedAt.toISOString(),
-      completedAt: updatedSession.completedAt?.toISOString() ?? "",
+      completedAt: updatedSession.completedAt!.toISOString(),
     };
   }
 }

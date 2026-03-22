@@ -14,16 +14,20 @@ datasource db {
 }
 
 model User {
-  id            String        @id
-  workoutPlans  WorkoutPlan[]
-  name          String
-  email         String
-  emailVerified Boolean       @default(false)
-  image         String?
-  createdAt     DateTime      @default(now()) @db.Timestamp()
-  updatedAt     DateTime      @updatedAt @db.Timestamp()
-  sessions      Session[]
-  accounts      Account[]
+  id                  String        @id
+  workoutPlans        WorkoutPlan[]
+  name                String
+  email               String
+  emailVerified       Boolean       @default(false)
+  image               String?
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+  sessions            Session[]
+  accounts            Account[]
+  weightInGrams       Int?
+  heightInCentimeters Int?
+  age                 Int?
+  bodyFatPercentage   Int? // 100 representa 100% 
 
   @@unique([email])
   @@map("user")
@@ -34,20 +38,20 @@ model WorkoutPlan {
   name        String
   userId      String
   user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutDays WorkoutDay[]
   isActive    Boolean      @default(true)
   createdAt   DateTime     @default(now()) @db.Timestamptz()
   updatedAt   DateTime     @updatedAt @db.Timestamptz()
-  workoutDays WorkoutDay[]
 }
 
 enum WeekDay {
-  SUNDAY
   MONDAY
   TUESDAY
   WEDNESDAY
   THURSDAY
   FRIDAY
   SATURDAY
+  SUNDAY
 }
 
 model WorkoutDay {
