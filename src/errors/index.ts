@@ -1,4 +1,3 @@
-
 export class NotFoundError extends Error {
   constructor(message: string) {
     super(message);
@@ -7,23 +6,9 @@ export class NotFoundError extends Error {
 }
 
 export class WorkoutPlanNotActiveError extends Error {
-  constructor(message: string = "Workout plan is not active") {
-    super(message);
-    this.name = "WorkoutPlanNotActiveError";
-  }
-}
-
-export class ConflictError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = "ConflictError";
-  }
-}
-
-export class ForbiddenError extends Error {
-  constructor(message: string = "Forbidden") {
-    super(message);
-    this.name = "ForbiddenError";
+    this.name = "WorkoutPlanNotActiveError";
   }
 }
 

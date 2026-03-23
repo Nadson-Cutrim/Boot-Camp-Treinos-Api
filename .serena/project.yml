@@ -1,5 +1,5 @@
 # the name by which the project can be referenced within Serena
-project_name: "Boot-Camp-Treinos-Api"
+project_name: "bootcamp-treinos-api"
 
 
 # list of languages for which language servers are started; choose from:
@@ -32,11 +32,6 @@ languages:
 # For a list of possible encodings, see https://docs.python.org/3.11/library/codecs.html#standard-encodings
 encoding: "utf-8"
 
-# line ending convention to use when writing source files.
-# Possible values: unset (use global setting), "lf", "crlf", or "native" (platform default)
-# This does not affect Serena's own files (e.g. memories and configuration files), which always use native line endings.
-line_ending:
-
 # The language backend to use for this project.
 # If not set, the global setting from serena_config.yml is used.
 # Valid values: LSP, JetBrains
@@ -57,9 +52,7 @@ ignored_paths: []
 # Added on 2025-04-18
 read_only: false
 
-# list of tool names to exclude.
-# This extends the existing exclusions (e.g. from the global configuration)
-#
+# list of tool names to exclude. We recommend not excluding any tools, see the readme for more details.
 # Below is the complete list of tools for convenience.
 # To make sure you have the latest list of tools, and to view their descriptions, 
 # execute `uv run scripts/print_tool_overview.py`.
@@ -100,8 +93,7 @@ read_only: false
 #  * `write_memory`: Writes a named memory (for future reference) to Serena's project-specific memory store.
 excluded_tools: []
 
-# list of tools to include that would otherwise be disabled (particularly optional tools that are disabled by default).
-# This extends the existing inclusions (e.g. from the global configuration).
+# list of tools to include that would otherwise be disabled (particularly optional tools that are disabled by default)
 included_optional_tools: []
 
 # fixed set of tools to use as the base tool set (if non-empty), replacing Serena's default set of tools.
@@ -132,7 +124,3 @@ initial_prompt: ""
 # This overrides the corresponding setting in the global configuration; see the documentation there.
 # If null or missing, use the setting from the global configuration.
 symbol_info_budget:
-
-# list of regex patterns which, when matched, mark a memory entry as read‑only.
-# Extends the list from the global configuration, merging the two lists.
-read_only_memory_patterns: []

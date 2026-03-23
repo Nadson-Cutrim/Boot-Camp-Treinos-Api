@@ -1,68 +1,58 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Este arquivo orienta o Claude Code (claude.ai/code) ao trabalhar com o codigo deste repositorio.
 
-## Project Overview
+## Visao Geral
 
-A TypeScript Fastify API for workout plan management with authentication. Users can create workout plans with days and exercises.
+API de treinos construida com Fastify 5, TypeScript, Prisma 7 e Better-Auth. Roda em Node.js 24.x com pnpm 10.30.0 (ambos obrigatorios via `engine-strict`).
 
-## Commands
+## Comandos
 
 ```bash
-pnpm dev              # Start development server with watch mode
-pnpm prisma generate  # Generate Prisma client (outputs to src/generated/prisma)
-pnpm prisma migrate dev --name <name>  # Create and apply migration
-pnpm prisma db push   # Push schema changes without migration
-npx eslint . --fix    # Lint and auto-fix
-npx prettier . --write # Format code
+# Iniciar servidor de desenvolvimento (hot-reload na porta 8081)
+pnpm dev
+
+# Iniciar PostgreSQL
+docker-compose up -d
+
+# Migrations do Prisma
+pnpm exec prisma migrate dev
+pnpm exec prisma generate
+
+# Lint
+pnpm exec eslint .
+
+# Formatacao
+pnpm exec prettier --write .
 ```
 
-## Database
+Nao ha script de build ou teste configurado ainda. TypeScript compila para `./dist` via `tsc`.
 
-PostgreSQL via Docker Compose. Start with `docker compose up -d`. The database runs on port 5432 with credentials in `docker-compose.yml`.
+## Arquitetura
 
-After schema changes in `prisma/schema.prisma`, run `pnpm prisma generate` to update the generated client in `src/generated/prisma/`.
+### Padrao em camadas: Routes → Use Cases → Prisma
 
-## Architecture
+- **Routes** (`src/routes/`) — Handlers de rotas Fastify. Registram schemas Zod para validacao de request/response via `fastify-type-provider-zod`. Extraem sessao de autenticacao e definem status HTTP.
+- **Use Cases** (`src/usecases/`) — Classes de logica de negocio. Recebem DTOs, usam transacoes Prisma para atomicidade (ex: desativar planos ativos antes de criar novos). Uma classe por caso de uso.
+- **Schemas** (`src/schemas/`) — Schemas Zod compartilhados entre rotas e OpenAPI docs. Definem tanto validacao de entrada quanto formato de resposta.
+- **Errors** (`src/errors/`) — Classes de erro customizadas (ex: `NotFoundError`) usadas nos use cases e tratadas nas rotas.
 
-```
-src/
-├── index.ts           # Fastify app setup, routes registration, auth handler
-├── lib/
-│   ├── auth.ts        # Better Auth configuration
-│   └── db.ts          # Prisma client singleton
-├── routes/            # Fastify route handlers (one file per domain)
-├── schemas/           # Zod schemas for request/response validation
-├── usecases/          # Business logic classes with execute() method
-├── errors/            # Custom error classes
-└── generated/prisma/  # Generated Prisma types and client
-```
+### Autenticacao
 
-### Patterns
+Better-Auth com adaptador Prisma (`src/lib/auth.ts`). Rotas de auth em `/api/auth/*`. Autenticacao baseada em sessao — rotas extraem a sessao do usuario via `auth.api.getSession()`.
 
-- **Use Case Classes**: Business logic lives in `src/usecases/` as classes with an `execute()` method. Routes call use cases, use cases call Prisma.
-- **Validation**: Zod schemas in `src/schemas/` are used with `fastify-type-provider-zod` for request/response typing.
-- **Authentication**: Better Auth handles sessions. Routes get sessions via `auth.api.getSession({ headers })` and extract `session.user.id`.
-- **Prisma Transactions**: Use `$transaction()` for atomic operations (see `CreateWorkoutPlan`).
-- **Import Sorting**: ESLint enforces `simple-import-sort/imports`. Run `--fix` before commits.
+### Banco de Dados
 
-### Database Models
+PostgreSQL 16 via Docker. Prisma client inicializado em `src/lib/db.ts`. Tipos gerados em `src/generated/prisma/` (gitignored). Schema em `prisma/schema.prisma`.
 
-- `User` - Auth user (Better Auth)
-- `WorkoutPlan` - A workout plan with `workoutDays`
-- `WorkoutDay` - A day in a plan with `weekDay`, `exercises`, `isRest`
-- `WorkoutExercise` - An exercise with `sets`, `reps`, `restTimeInSeconds`
-- `WorkoutSession` - Tracks workout completion
-- `Session`, `Account`, `Verification` - Better Auth tables
+### Documentacao da API
 
-## API Documentation
+Swagger JSON em `/swagger.json`, Scalar UI em `/docs`. Endpoints de auth sao mesclados no spec OpenAPI via plugin do Better-Auth.
 
-Swagger UI available at `/docs`. Routes use OpenAPI tags for grouping.
+## Convencoes
 
-## Environment Variables
-
-Required in `.env`:
-- `PORT` - Server port (default 8080)
-- `DATABASE_URL` - PostgreSQL connection string
-- `BETTER_AUTH_URL` - Auth server URL
-- `BETTER_AUTH_SECRET` - Auth secret key
+- **TypeScript strict** com target ES2024 e module resolution `nodenext`
+- **ESLint** com typescript-eslint, integracao com prettier e `simple-import-sort` (imports devem ser ordenados)
+- **Zod 4** para validacao (usa padrao `z.interface()`, nao `z.object()`)
+- **CORS** permite `http://localhost:3000` com credentials
+- Variaveis de ambiente: `PORT`, `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`
