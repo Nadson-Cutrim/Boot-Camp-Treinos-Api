@@ -36,7 +36,7 @@ await app.register(fastifySwagger, {
     servers: [
       {
         description: "Localhost",
-        url: "http://localhost:8080",
+        url: "http://localhost:8081",
       },
     ],
   },
@@ -107,6 +107,9 @@ app.withTypeProvider<ZodTypeProvider>().route({
 app.route({
   method: ["GET", "POST"],
   url: "/api/auth/*",
+  schema: {
+    hide: true,
+  },
   async handler(request, reply) {
     try {
       // Construct request URL
