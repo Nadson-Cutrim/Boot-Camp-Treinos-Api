@@ -3,5 +3,5 @@ node_modules
 .env
 
 #Build
-./dist
+dist
 settings.json
